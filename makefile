@@ -8,9 +8,11 @@ boot/mbr.asm:
 	nasm -f bin -o ./bin/bootloader.bin ./boot/mbr.asm -i ./kernel/include/ -i ./kernel/include/Morgenroete/
 boot/netboot.asm:
 	sudo nasm -f bin -o /srv/tftp/boot.bin ./boot/netboot.asm -i ./kernel/include/ -i ./kernel/include/Morgenroete/
+kernel/memory/pmemory.asm:
+	nasm -f elf64 -o ./bin/physical_memory.elf ./kernel/memory/pmemory.asm -i ./kernel/include/ -i ./kernel/include/Morgenroete/
 
 link_all: boot/prekernel.asm kernel/kernel.asm boot/mbr.asm	
-	ld -z max-page-size=0x1000 -nostdlib -m elf_x86_64 -T ./kernel/link.ld -o ./bin/kernel.bin ./bin/prekernel.elf ./bin/kernel.elf
+	ld -z max-page-size=0x1000 -nostdlib -m elf_x86_64 -T ./kernel/link.ld -o ./bin/kernel.bin ./bin/prekernel.elf ./bin/kernel.elf ./bin/physical_memory.elf
 	cat ./bin/kernel.bin >> ./bin/bootloader.bin
 	./appender ./bin/bootloader.bin ./bin/bootloader.bin
 
@@ -35,3 +37,5 @@ update:
 clean:
 	rm ./bin/prekernel.elf
 	rm ./bin/kernel.elf
+	rm ./bin/physical_memory.elf
+
