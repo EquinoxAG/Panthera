@@ -10,7 +10,7 @@ boot/netboot.asm:
 	sudo nasm -f bin -o /srv/tftp/boot.bin ./boot/netboot.asm -i ./kernel/include/ -i ./kernel/include/Morgenroete/
 
 link_all: boot/prekernel.asm kernel/kernel.asm boot/mbr.asm	
-	ld -z max-page-size=0x1000 -nostdlib -m elf_x86_64 -T ./kernel/link.ld -o ./bin/kernel.bin ./bin/prekernel.elf ./bin/kernel.elf ./bin/vga_driver.elf ./bin/pmemory_driver.elf ./bin/vmemory_driver.elf ./bin/string.elf ./bin/heap.elf ./bin/ata_driver.elf ./bin/acpi_driver.elf ./bin/keyboard.elf ./bin/apic.elf ./bin/exceptions.elf ./bin/hpet.elf
+	ld -z max-page-size=0x1000 -nostdlib -m elf_x86_64 -T ./kernel/link.ld -o ./bin/kernel.bin ./bin/prekernel.elf ./bin/kernel.elf
 	cat ./bin/kernel.bin >> ./bin/bootloader.bin
 	./appender ./bin/bootloader.bin ./bin/bootloader.bin
 
