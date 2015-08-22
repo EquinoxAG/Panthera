@@ -8,7 +8,7 @@
 	my_magic dd MAGIC
 	dd FLAGS
 	dd CHECKSUM
-	%define STACK_BASE_ADDR  0x5FFFF0
+	%define STACK_BASE_ADDR  0x3FFFF0
 	%define GDT_BASE 0x900
 	%define gdt_limit 0x980
 	%define gdt_base 0x982
@@ -129,7 +129,7 @@ InitialisePaging:
 		pop edi
 		add edi, 0x1000			;0x602000
 		mov eax, 0x8B
-		mov ecx, 5			; Map first 10 MB
+		mov ecx, BOOTUP_ID_MAP_SIZE 	; Map
 			
 
 		.Map:
@@ -138,7 +138,7 @@ InitialisePaging:
 			add edi, 8
 			add eax, 0x200000
 			adc ebx, 0
-			sub ecx, 1
+			sub ecx, 0x200000
 			jnz .Map
 
 		mov eax, BOOTUP_PML4_ADDR
