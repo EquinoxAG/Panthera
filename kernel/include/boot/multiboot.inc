@@ -50,4 +50,5 @@ interface_close
 
 %define MultibootStrucAddr 0x500 ;Address at which the multiootstructure will be relocated to or written by the self written bootloader to
 %define MemMapAddr 0x600 ;Relocates the MemMap to address 0x600 or if the bootloader from PerfOS is used create it at that address
-%define BOOTUP_PML4_ADDR 0x400000 
+%define BOOTUP_PML4_ADDR 0x200000 
+%define BOOTUP_ID_MAP_SIZE 0x2000000
