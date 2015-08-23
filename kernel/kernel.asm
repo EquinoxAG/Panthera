@@ -17,8 +17,8 @@ kernelMain:
 	secure_call MapVirtToPhys( 0xC000000, 0x200000, 0x200000, PAGE_READ_WRITE|PAGE_CACHE_TYPE_WT ) 
 	jmp $
 
-
 section .bss
 MbrStrucAddr resq 0
+
 
 ImportAllMgrFunctions

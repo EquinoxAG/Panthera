@@ -40,9 +40,12 @@ SECTIONS
 		*(.bss)
 	}
 
+	.endSection BLOCK(4K) : ALIGN(4K)
+	{
+	}
+
 	kernel_end = .;
+	ASSERT( kernel_end < 0x200000   , "Kernel takes too much space, the kernel is designed to use less than 1MB, the limit is reached")
 
-	
 }
-
 
