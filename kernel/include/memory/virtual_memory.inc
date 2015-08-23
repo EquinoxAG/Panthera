@@ -9,11 +9,14 @@
 %include "Morgenroetev1.inc"
 
 DefineFunction InitialiseVirtualMemoryManager, 1
+DefineFunction MapVirtToPhys, 4
 
-%define PAGE_READ 0
-%define PAGE_READ_WRITE 2
-%define PAGE_READ_WRITE_EXECUTE (PAGE_READ_WRITE|0x8000000000000000)
-%define PAGE_USR_ACCESS 4
+%define PAGE_PRESENT 1
+%define PAGE_SIZE_FLAG (1<<7)
+%define PAGE_READ (PAGE_PRESENT)
+%define PAGE_READ_WRITE (2|PAGE_PRESENT)
+%define PAGE_READ_WRITE_EXECUTE (PAGE_READ_WRITE|0x8000000000000000|PAGE_PRESENT)
+%define PAGE_USR_ACCESS (4|PAGE_PRESENT)
 
 
 %define PAGE_CACHE_TYPE_WB (0<<3)

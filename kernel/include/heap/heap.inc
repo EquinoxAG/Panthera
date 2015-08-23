@@ -2,7 +2,7 @@
 %define _KRNEL_HEAP_INC_
 %include "Morgenroetev1.inc"
 
-DefineFunction InitialiseHeap, 1
+DefineFunction InitialiseHeap, 2
 DefineFunction malloc, 2
 DefineFunction malloc, 3
 DefineFunction free,1

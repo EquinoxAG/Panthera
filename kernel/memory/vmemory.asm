@@ -1,4 +1,5 @@
 %include"memory/virtual_memory.inc"
+%include "heap/heap.inc"
 
 %define IA32_PAT_MSR 0x277
 
@@ -105,11 +106,9 @@ DeclareFunction MapVirtToPhys( virt_addr, phys_addr, size, flags )
 	;	r14 = phys address aligned on 4KB
 	; 	r15 = size if virt address of phys address was not aligned on a 4KB boundary, the size will be increased by 4KB to ensure, that the whole memory is covered
 
-
 	.TotalRemap:
 		mov rdi, cr3	;Load the current PML4 address	
 		mov_ts qword[ PML4_Base ], rdi
-
 
 	.ReenterPML4:
 		mov_ts rdi, qword[ PML4_Base ]
@@ -132,10 +131,10 @@ DeclareFunction MapVirtToPhys( virt_addr, phys_addr, size, flags )
 		test r8d, r8d
 		cmovnz rax, rcx
 
-		test r13d, 0xFFFFF
+		test r13d, 0x1FFFFF
 		cmovnz rax, rcx
 
-		test r14d, 0xFFFFF
+		test r14d, 0x1FFFFF
 		cmovnz rax, rcx
 
 		cmp r15, 0x200000
@@ -146,12 +145,17 @@ DeclareFunction MapVirtToPhys( virt_addr, phys_addr, size, flags )
 	.Create4KBPage:
 		mov rax, r9
 		call Enter_CreateEnter_Dir	;Now rdi should point to the right Page Table
+	
 		add rdi, r8			;Calculate the right offset into the table
-		mov eax, 0x1000
-
+		
 		.MapNext4KBPage:
+			mov eax, 0x1000
+
+		.MapNextPage:
 			mov rsi, r14			;Get the right address into rsi
 			call CreatePagePat
+			
+			and r12w, ~PAGE_SIZE_FLAG
 
 			add rdi, 8
 			add r14, rax			;Increase address
@@ -190,10 +194,12 @@ DeclareFunction MapVirtToPhys( virt_addr, phys_addr, size, flags )
 	.Create2MBPage:
 		add rdi, r9		;Calculate the absolute offset off the page to create
 		mov eax, 0x200000
-		jmp .MapNext4KBPage
+		or r12d, PAGE_SIZE_FLAG
+		jmp .MapNextPage
 
 
 	.done:
+		jmp $
 
 EndFunction
 
@@ -224,8 +230,9 @@ EndFunction
 
 
 	Enter_CreateEnter_Dir:
+		CreateStack DckStack
 		add rdi, rax
-		
+
 		mov rsi, qword[ rdi ]
 		
 		or rsi, rsi
@@ -239,13 +246,55 @@ EndFunction
 		
 		mov rdi, rsi
 		and di, 0xF000
-		ret
+		
+		jmp .end
 
 		.already_in_use:
+			mov eax, 0xFFCC
 			jmp $
 
 		.create_new_dir:
-			jmp $
+			push rcx
+			push rdx
+			push r8
+			push r9
+			push r10
+			push r11
+			push r12
+			push r13
+			push r14
+			push r15
+			
+			mov rbx, rdi
+			secure_call malloc( 0x1000, "Virtual memory page directory", 0x1000 )
+			push rax
+			
+			mov rdi, rax
+			mov ecx, 0x1000/8
+			xor rax, rax
+			rep stosq
+
+			pop rdi
+
+			mov rax, rdi
+			or ax, 0x0F
+			mov qword[ rbx ], rax
+	
+			pop r15
+			pop r14
+			pop r13
+			pop r12
+			pop r11
+			pop r10
+			pop r9
+			pop r8
+			pop rdx
+			pop rcx
+			
+			.end:
+			DestroyStack DckStack
+			ret
+
 
 
 fatal_no_pat:
@@ -256,3 +305,5 @@ vm_driver:
 	.efer_nxe_bit dq 0x7FFFFFFFFFFFFFFF	
 	.4kb_mask dw (1<<7)|(4<<3)
 	.2mb_mask dw (1<<12)|(4<<3)
+
+ImportAllMgrFunctions
