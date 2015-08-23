@@ -29,4 +29,7 @@ interface_close
 
 %define BLOCK_USERDEFINED 0x1000
 
+
+%define BOOTUP_HEAP_ADDR 0x300000
+%define BOOTUP_HEAP_SIZE 0x400000
 %endif

@@ -10,7 +10,7 @@ kernelMain:
 	CreateStack kernelSt
 	mov qword[MbrStrucAddr], rdi
 
-	secure_call InitialiseHeap( 0xC00000, 0x200000 )
+	secure_call InitialiseHeap( BOOTUP_HEAP_ADDR, BOOTUP_HEAP_SIZE )	;Initialise the bootup stack with 4MB size
 
 	secure_call InitialiseVirtualMemoryManager( cr3 )
 	
