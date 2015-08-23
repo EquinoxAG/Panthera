@@ -8,9 +8,11 @@ boot/mbr.asm:
 	nasm -f bin -o ./bin/bootloader.bin ./boot/mbr.asm -i ./kernel/include/ -i ./kernel/include/Morgenroete/
 boot/netboot.asm:
 	sudo nasm -f bin -o /srv/tftp/boot.bin ./boot/netboot.asm -i ./kernel/include/ -i ./kernel/include/Morgenroete/
+kernel/memory/vmemory.asm:
+	nasm -f elf64 -o ./bin/virtual_memory.elf ./kernel/memory/vmemory.asm -i ./kernel/include/ -i ./kernel/include/Morgenroete/
 
 link_all: boot/prekernel.asm kernel/kernel.asm boot/mbr.asm	
-	ld -z max-page-size=0x1000 -nostdlib -m elf_x86_64 -T ./kernel/link.ld -o ./bin/kernel.bin ./bin/prekernel.elf ./bin/kernel.elf
+	ld -z max-page-size=0x1000 -nostdlib -m elf_x86_64 -T ./kernel/link.ld -o ./bin/kernel.bin ./bin/prekernel.elf ./bin/kernel.elf ./bin/virtual_memory.elf
 	cat ./bin/kernel.bin >> ./bin/bootloader.bin
 	./appender ./bin/bootloader.bin ./bin/bootloader.bin
 
@@ -29,9 +31,10 @@ update:
 	cd ..
 	cd ..
 
-.PHONY: boot/prekernel.asm boot/netboot.asm kernel/keyboard/keyboard.asm kernel/kernel.asm boot/mbr.asm kernel/graphics/vga_driver.asm kernel/memory/pmemory.asm kernel/memory/vmemory.asm kernel/string/string.asm kernel/heap/heap.asm kernel/ata/ata_driver.asm kernel/acpi/acpi.asm kernel/apic/apic.asm kernel/exception/exception.asm kernel/hpet/hpet.asm link_all
+.PHONY: boot/prekernel.asm boot/netboot.asm kernel/memory/vmemory.asm kernel/keyboard/keyboard.asm kernel/kernel.asm boot/mbr.asm kernel/graphics/vga_driver.asm kernel/memory/pmemory.asm kernel/memory/vmemory.asm kernel/string/string.asm kernel/heap/heap.asm kernel/ata/ata_driver.asm kernel/acpi/acpi.asm kernel/apic/apic.asm kernel/exception/exception.asm kernel/hpet/hpet.asm link_all
 
 
 clean:
 	rm ./bin/prekernel.elf
 	rm ./bin/kernel.elf
+	rm ./bin/virtual_memory.elf
