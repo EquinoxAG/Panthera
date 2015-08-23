@@ -108,18 +108,23 @@ DeclareFunction MapVirtToPhys( virt_addr, phys_addr, size, flags )
 
 	.TotalRemap:
 		mov rdi, cr3	;Load the current PML4 address	
-
-		mov rax, r11
 		mov_ts qword[ PML4_Base ], rdi
-		call Enter_CreateEnter_Dir
 
-		mov rax, r10
+
+	.ReenterPML4:
+		mov_ts rdi, qword[ PML4_Base ]
+		mov rax, r11	
+		call Enter_CreateEnter_Dir
 		mov_ts qword[ PDPT_Base ], rdi
+	
+	.ReenterPDPT:
+		mov_ts rdi, qword[ PDPT_Base ]
+		mov rax, r10
 		call Enter_CreateEnter_Dir
-
 		mov_ts qword[ PDT_Base ], rdi
 
 	.StartMapping:
+		mov_ts rdi, qword[ PDT_Base ]
 		mov rcx, .Create4KBPage
 		mov rax, .Create2MBPage
 		
@@ -142,53 +147,77 @@ DeclareFunction MapVirtToPhys( virt_addr, phys_addr, size, flags )
 		mov rax, r9
 		call Enter_CreateEnter_Dir	;Now rdi should point to the right Page Table
 		add rdi, r8			;Calculate the right offset into the table
-	
+		mov eax, 0x1000
+
 		.MapNext4KBPage:
 			mov rsi, r14			;Get the right address into rsi
-			call CreatePagePat4KB
+			call CreatePagePat
 
 			add rdi, 8
-			add r14, 0x1000			;Increase address
+			add r14, eax			;Increase address
 
-			sub r15, 0x1000
+			sub r15, eax
 			jbe .done
 
-		.SelectNextEntry4KB:
-			add r8d, 8
+			shr eax, 9
+
+		.SelectNextEntry:
+			add r8d, eax
 
 			cmp r8d, 0x1000
 			jnz .MapNext4KBPage
 
 			xor r8d, r8d
-		
+
+			add r9d, 8
+
+			cmp r9d, 0x1000
+			jnz .StartMapping
+
+			xor r9d, r9d
+
+			add r10d, 8
+			
+			cmp r10d, 0x1000
+			jnz .ReenterPDPT
+
+			xor r10d, r10d
+
+			add r11d, 8
+
+			jmp .ReenterPML4
 
 	.Create2MBPage:
-	
+		add rdi, r9		;Calculate the absolute offset off the page to create
+		mov eax, 0x200000
+		jmp .MapNext4KBPage
+
+
 	.done:
 
 EndFunction
 
 
-	;rdi = addr of the entry, rsi = phys addr, r12 = flags of the page
-	CreatePagePat4KB:
-		mov cx, (1<<7)
-		jmp CreatePagePat2MB.4KBEntry
+	;rdi = addr of the entry, rsi = phys addr, r12 = flags of the page, rax = page size
+	CreatePagePat:
+		mov rbx, rax
+		cmp eax, 0x200000			;If the page size is 2MB load the 2MB Mask in cx, else load the 4KB mask
+		cmovnz cx, word[ vm_driver.4kb_mask ]
+		cmovz cx, word[ vm_driver.2mb_mask ]
 
-	CreatePagePat2MB:
-		mov cx, (1<<12)
+		or rsi, r12				;Load the right flags into rsi
+		xor rax, rax
+		and rsi, rdx				;And the current flags with the nxe-bit mask; NXE-Bitmask will flush the NXE-Bit if it is not supported by the hardware
 
-	.4KBEntry:
-		or rsi, r12
-		and rsi, rdx
+		test si, (4<<3)				;Is the 3rd PAT Bit set?
+		jz .write_page				;No write the page to memory
 
-		test si, (4<<3)
-		jz .write_page
-
-		and si, ~(4<<3)
-		or si, cx
+		xor si, cx				;Else flush the 3rd PAT-Bit and adjust it to the right position depending, on 2MB or 4KB page
 
 	.write_page:
-		mov qword[ rdi ], rsi
+		lock cmpxchg qword[ rdi ], rsi		;Atomic write to the page table
+		mov rax, rbx
+		jnz Enter_CreateEnter_Dir.already_in_use
 		ret
 
 
@@ -216,7 +245,7 @@ EndFunction
 			jmp $
 
 		.create_new_dir:
-			ret
+			jmp $
 
 
 fatal_no_pat:
@@ -224,5 +253,6 @@ fatal_no_pat:
 	jmp $
 
 vm_driver:
-	.efer_nxe_bit dq 0x7FFFFFFFFFFFFFFF
-	.added_val dd 0x1000
+	.efer_nxe_bit dq 0x7FFFFFFFFFFFFFFF	
+	.4kb_mask dw (1<<7)|(4<<3)
+	.2mb_mask dw (1<<12)|(4<<3)
