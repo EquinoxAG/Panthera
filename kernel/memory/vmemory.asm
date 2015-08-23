@@ -42,7 +42,6 @@ DeclareFunction InitialiseVirtualMemoryManager( bootup_pml4 )
 EndFunction
 
 DeclareFunction MapVirtToPhys( virt_addr, phys_addr, size, flags )
-
 	mov r8, Arg_virt_addr
 	mov r9, Arg_virt_addr
 	shr r8, 9
@@ -89,11 +88,29 @@ DeclareFunction MapVirtToPhys( virt_addr, phys_addr, size, flags )
 	; 	r15 = size if virt address of phys address was not aligned on a 4KB boundary, the size will be increased by 4KB to ensure, that the whole memory is covered
 
 
+	mov rdi, cr3	;Load the current PML4 address
+		
+	mov rax, r11
+	call Enter_CreateEnter_Dir
+
+	mov rax, r10
+	call Enter_CreateEnter_Dir
 
 
-	
 
 
+	Enter_CreateEnter_Dir:
+		add rdi, rax
+		
+		cmp qword[ rdi ], 0
+		jz .create_new_dir
+		
+		mov rdi, qword[ rdi ]
+		and di, 0xF000
+		ret
+
+		.create_new_dir:
+			ret
 
 EndFunction
 
