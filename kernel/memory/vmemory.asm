@@ -154,9 +154,9 @@ DeclareFunction MapVirtToPhys( virt_addr, phys_addr, size, flags )
 			call CreatePagePat
 
 			add rdi, 8
-			add r14, eax			;Increase address
+			add r14, rax			;Increase address
 
-			sub r15, eax
+			sub r15, rax
 			jbe .done
 
 			shr eax, 9
