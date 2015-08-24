@@ -153,37 +153,59 @@ DeclareFunction MapVirtToPhys( virt_addr, phys_addr, size, flags )
 
 		.MapNextPage:
 			mov rsi, r14			;Get the right address into rsi
-			call CreatePagePat
+		
+			;rdi = addr of the entry, rsi = phys addr, r12 = flags of the page, rax = page size
+			mov rbx, rax
+			cmp eax, 0x200000			;If the page size is 2MB load the 2MB Mask in cx, else load the 4KB mask
+			cmovnz cx, word[ vm_driver.4kb_mask ]
+			cmovz cx, word[ vm_driver.2mb_mask ]
+
+			or rsi, r12				;Load the right flags into rsi
+			xor rax, rax
+			and rsi, rdx				;And the current flags with the nxe-bit mask; NXE-Bitmask will flush the NXE-Bit if it is not supported by the hardware
+
+			test si, (4<<3)				;Is the 3rd PAT Bit set?
+			jz .write_page				;No write the page to memory
+
+			xor si, cx				;Else flush the 3rd PAT-Bit and adjust it to the right position depending, on 2MB or 4KB page
+
+		.write_page:
+			lock cmpxchg qword[ rdi ], rsi		;Atomic write to the page table
+			mov rax, rbx				;Restore rax won't flush the flags
+			jnz Enter_CreateEnter_Dir.already_in_use
+	
+
 			
-			and r12w, ~PAGE_SIZE_FLAG
+			and r12w, ~PAGE_SIZE_FLAG		;Reset the page size bit, if the next page is 2MB again the function will set the bit again, but default is 4KB
 
-			add rdi, 8
-			add r14, rax			;Increase address
+			add rdi, 8				;Load address of the next entry
+			add r14, rax				;Increase physical address by pagesize
+		
+			sub r15, rax				;Decrease size to map by pagesize
+			jbe .done				;If everthing is mapped, jump to done
 
-			sub r15, rax
-			jbe .done
-
-			shr eax, 9
+			shr eax, 9				;If eax holds the 2MB Page size = 0x200000>>9 = 0x1000; eax will therefore set r8d to the max value possible and init the turnover,
+								;If eax holds the 4KB Page size = 0x1000>>9 = 8; eax will therefore select the next entry
 
 		.SelectNextEntry:
-			add r8d, eax
+			add r8d, eax				;Addd a specific value for the current page size, 2MB Pages will instantly toogle the overrun, while 4KB Pages will only increase r8d by 8
 
-			cmp r8d, 0x1000
+			cmp r8d, 0x1000				;If the end of the Page Table is reached, reset r8d and increase the index in the Page directory table
 			jnz .MapNext4KBPage
 
-			xor r8d, r8d
+			xor r8d, r8d			
 
-			add r9d, 8
+			add r9d, 8				;Increase the index in the page direcory table
 
-			cmp r9d, 0x1000
+			cmp r9d, 0x1000				;If no ovrerrun occures, Jump again to start mapping and create a new directory if the page size 4KB is selected
 			jnz .StartMapping
 
-			xor r9d, r9d
+			xor r9d, r9d				;If r9d did overrun reset it and increase the index in the Page directory pointer table
 
-			add r10d, 8
+			add r10d, 8				
 			
 			cmp r10d, 0x1000
-			jnz .ReenterPDPT
+			jnz .ReenterPDPT			;Create the new directory
 
 			xor r10d, r10d
 
@@ -192,39 +214,19 @@ DeclareFunction MapVirtToPhys( virt_addr, phys_addr, size, flags )
 			jmp .ReenterPML4
 
 	.Create2MBPage:
-		add rdi, r9		;Calculate the absolute offset off the page to create
-		mov eax, 0x200000
-		or r12d, PAGE_SIZE_FLAG
+		add rdi, r9			;Calculate the absolute offset off the page to create
+		mov eax, 0x200000		;Page size is 2MB
+		or r12d, PAGE_SIZE_FLAG		;Set the page size bit in order to set a page with the size of 2MB
 		jmp .MapNextPage
 
 
 	.done:
-		jmp $
+		xor eax, eax			;Everything wents well, so reset eax
 
 EndFunction
 
 
-	;rdi = addr of the entry, rsi = phys addr, r12 = flags of the page, rax = page size
-	CreatePagePat:
-		mov rbx, rax
-		cmp eax, 0x200000			;If the page size is 2MB load the 2MB Mask in cx, else load the 4KB mask
-		cmovnz cx, word[ vm_driver.4kb_mask ]
-		cmovz cx, word[ vm_driver.2mb_mask ]
 
-		or rsi, r12				;Load the right flags into rsi
-		xor rax, rax
-		and rsi, rdx				;And the current flags with the nxe-bit mask; NXE-Bitmask will flush the NXE-Bit if it is not supported by the hardware
-
-		test si, (4<<3)				;Is the 3rd PAT Bit set?
-		jz .write_page				;No write the page to memory
-
-		xor si, cx				;Else flush the 3rd PAT-Bit and adjust it to the right position depending, on 2MB or 4KB page
-
-	.write_page:
-		lock cmpxchg qword[ rdi ], rsi		;Atomic write to the page table
-		mov rax, rbx
-		jnz Enter_CreateEnter_Dir.already_in_use
-		ret
 
 
 

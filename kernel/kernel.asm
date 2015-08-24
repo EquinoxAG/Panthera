@@ -10,11 +10,12 @@ kernelMain:
 	CreateStack kernelSt
 	mov qword[MbrStrucAddr], rdi
 
-	secure_call InitialiseHeap( BOOTUP_HEAP_ADDR, BOOTUP_HEAP_SIZE )	;Initialise the bootup stack with 4MB size
+	secure_call InitialiseHeap( BOOTUP_HEAP_ADDR, (BOOTUP_ID_MAP_SIZE-BOOTUP_HEAP_ADDR) )	;Initialise the bootup stack with the whole memory which was mapped
 
-	secure_call InitialiseVirtualMemoryManager( cr3 )
-	
-	secure_call MapVirtToPhys( 0xC000000, 0x200000, 0x200000, PAGE_READ_WRITE|PAGE_CACHE_TYPE_WT ) 
+	secure_call InitialiseVirtualMemoryManager( cr3 )	;Initialise the virtual memory with the current cr3
+
+
+	mov word[ 0xb8000 ], 0x0430
 	jmp $
 
 section .bss

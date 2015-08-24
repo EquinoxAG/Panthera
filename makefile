@@ -15,6 +15,8 @@ kernel/heap/heap.asm:
 
 link_all: boot/prekernel.asm kernel/kernel.asm boot/mbr.asm kernel/memory/vmemory.asm kernel/heap/heap.asm kernel/memory/pmemory.asm
 	ld -z max-page-size=0x1000 -nostdlib -m elf_x86_64 -T ./kernel/link.ld -o ./bin/kernel.bin ./bin/prekernel.elf ./bin/kernel.elf ./bin/virtual_memory.elf ./bin/heap.elf ./bin/physical_memory.elf
+	cat ./bin/kernel.bin >>./bin/bootloader.bin
+	./appender ./bin/bootloader.bin ./bin/bootloader.bin
 
 kernel/memory/pmemory.asm:
 	nasm -f elf64 -o ./bin/physical_memory.elf ./kernel/memory/pmemory.asm -i ./kernel/include/ -i ./kernel/include/Morgenroete/
@@ -40,10 +42,6 @@ update:
 clean:
 	rm ./bin/prekernel.elf
 	rm ./bin/kernel.elf
-<<<<<<< HEAD
 	rm ./bin/virtual_memory.elf
 	rm ./bin/heap.elf
-=======
 	rm ./bin/physical_memory.elf
-
->>>>>>> PhysMemManager
