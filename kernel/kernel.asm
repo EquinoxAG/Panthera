@@ -28,6 +28,8 @@ kernelMain:
 	secure_call InitialiseExceptions()
 
 
+	;Initialise the virtual memory manager after the exceptions
+	secure_call InitialiseVirtualMemoryManager( cr3 )
 
 
 	mov dword[ 0xaffffff ], 0
