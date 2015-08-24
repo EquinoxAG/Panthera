@@ -161,6 +161,11 @@ GeneralProtectionFault:
 	jmp $
 
 PageFaultException:
+	add rsp, 8
+	push qword 0
+	secure_call DumpRegisters()
+	jmp $
+
 	cli
 	secure_call DrawString("Page fault exception")
 	jmp $

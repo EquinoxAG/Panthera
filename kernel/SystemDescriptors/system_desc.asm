@@ -2,21 +2,30 @@
 %include "heap/heap.inc"
 
 DeclareFunction InitialiseSD()
+	;If the idt_base is non zero the System Descriptors have already been initialised
 	cmp qword[ SystemDescriptors.idt_base ],  0
 	jnz .done
-	
+
+	;Load the propertys of the global descriptor table in the buffer
 	sgdt [SystemDescriptors.gdt_limit]
 
+	;Reserve enough space for the interrupt descriptor table on a 4KB boundary
 	secure_call malloc( 256*16, "Interrupt Descriptor Table", 0x1000 )
+	;Save the new idt base
 	mov dword[ SystemDescriptors.idt_base ], eax
-	lidt [SystemDescriptors.idt_limit ]
-	.done:
+
+	
+	.done:	
+		;Load the new idt, even if the idt has been loaded already, it won't harm the cpu if it is loaded again
+		lidt [SystemDescriptors.idt_limit]
 EndFunction
 
 
 ;Set a Interrupt gate with the specified interrupt number, the offset to the function to call and the desired
 ;descriptor privilegue level
 DeclareFunction SetIDTGate( number, offset, dpl )
+
+	;If there is no idt loaded by now, the setIDTGate function can not set a gate, therefore quit the function with an error code
 	cmp dword[ SystemDescriptors.idt_base ], 0
 	jz .failed
 
@@ -53,7 +62,8 @@ DeclareFunction SetIDTGate( number, offset, dpl )
 	.done:
 EndFunction
 
-MutexLock db 0
+MutexLock db 0	;The mutex locks the create new segment function, as a new segment must be initialised by only one cpu at a time
+
 DeclareFunction CreateNewSegment( offset, dpl, gdt_type )
 	mov rcx, Arg_offset
 	mov r9, Arg_dpl
@@ -61,6 +71,7 @@ DeclareFunction CreateNewSegment( offset, dpl, gdt_type )
 	mov r10, Arg_gdt_type
 	and r10, 0xF
 
+	;Lock the mutex
 	mov al, 1
 
 	.again:
@@ -89,7 +100,60 @@ DeclareFunction CreateNewSegment( offset, dpl, gdt_type )
 	movzx eax, word[ SystemDescriptors.gdt_limit ]
 	add word[ SystemDescriptors.gdt_limit ], 8
 	lgdt [SystemDescriptors.gdt_limit ]
+
+	;Unlock the mutex
 	mov byte[ MutexLock ], 0
+EndFunction
+
+
+;Stack layout must be before call 
+; [rsp] = address to store to
+; [rsp + 8] = rip
+; [rsp + 16 ] = cs
+; [rsp + 24 ] = rflags
+; [rsp + 32 ] = rsp
+; [rsp + 40 ] = ss
+DeclareFunction DumpRegisters()
+	push rbx
+	push rax
+	
+	mov rax, qword[ rbp + 16 ]
+	
+	mov qword[ rax + CPURegisters.rbx ], rbx
+	mov qword[ rax + CPURegisters.rcx ], rcx
+	mov qword[ rax + CPURegisters.rdx ], rdx
+	mov qword[ rax + CPURegisters.rsi ], rsi
+	mov qword[ rax + CPURegisters.rdi ], rdi
+	mov qword[ rax + CPURegisters.r8 ], r8
+	mov qword[ rax + CPURegisters.r9 ], r9
+	mov qword[ rax + CPURegisters.r10 ], r10
+	mov qword[ rax + CPURegisters.r11 ], r11
+	mov qword[ rax + CPURegisters.r12 ], r12
+	mov qword[ rax + CPURegisters.r13 ], r13
+	mov qword[ rax + CPURegisters.r14 ], r14
+	mov qword[ rax + CPURegisters.r15 ], r15
+	mov rbx, qword[ rbp + 24 ];rip
+	mov qword[ rax + CPURegisters.rip ], rbx
+	mov rbx, qword[ rbp + 32 ];cs
+	mov qword[ rax + CPURegisters.cs ], rbx
+	mov rbx, qword[ rbp + 40 ];rflags
+	mov qword[ rax + CPURegisters.rflags ], rbx
+	mov rbx, qword[ rbp + 48 ];rsp
+	mov qword[ rax + CPURegisters.rsp ], rbx
+	mov rbx, qword[ rbp + 56 ]
+	mov qword[ rax + CPURegisters.ss ], rbx
+	mov ebx, ds
+	mov qword[ rax + CPURegisters.ds ], rbx
+	mov ebx, es
+	mov qword[ rax + CPURegisters.es ], rbx
+	mov ebx, fs
+	mov qword[ rax + CPURegisters.fs ], rbx
+	mov ebx, gs
+	mov qword[ rax + CPURegisters.gs ], rbx
+	pop rbx
+	mov qword[ rax + CPURegisters.rax ], rbx
+	mov rax, rbx
+	pop rbx
 EndFunction
 
 

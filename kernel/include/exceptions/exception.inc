@@ -7,7 +7,7 @@
 DefineFunction SetDebugBreakpoint, 4
 DefineFunction InitialiseExceptions, 0
 DefineFunction UnsetBreakpoint, 1
-DefineFunction DumpRegisters, 0
+
 
 %define EXCP_GLOBAL_BREAKPOINT 2
 %define EXCP_LOCAL_BREAKPOINT 1

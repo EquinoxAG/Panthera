@@ -19,4 +19,32 @@ DefineFunction CreateNewSegment, 3  ;offset, dpl, opmode
 %define GDT_TYPE_EXECUTE_READ 0xA
 %define GDT_PRESENT 0x80
 
+DefineFunction DumpRegisters, 0
+
+interface_open CPURegisters
+	add rax, qword
+	add rbx, qword
+	add rcx, qword
+	add rdx, qword
+	add rsi, qword
+	add rdi, qword
+	add r8, qword
+	add r9, qword
+	add r10, qword
+	add r11, qword
+	add r12, qword
+	add r13, qword
+	add r14, qword
+	add r15, qword
+	add rsp, qword
+	add rbp, qword
+	add rip, qword
+	add rflags, qword
+	add cs, qword
+	add ss, qword
+	add ds, qword
+	add es, qword
+	add fs, qword
+	add gs, qword
+interface_close
 %endif

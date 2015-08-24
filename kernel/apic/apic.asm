@@ -8,6 +8,7 @@ INCLUDE "string/string.inc"
 %include "SD/system_desc.inc"
 %include "boot/multiboot.inc"
 %include "keyboard/keyboard.inc"
+%include "exceptions/exception.inc"
 
 DeclareFunction SupplyACPIApicTable( addr )
 	mov qword[ apic_settings.acpi_apic_table_addr], Arg_addr
@@ -109,6 +110,9 @@ DeclareFunction InitialiseAPIC()
 	call RemapPICInterrupts		;First Remap the interrupts to 32-48 then mask all interrupts on the PIC
 					;The remap is important if the spurious interrupt fires, it does not care about	masked interrupt lines
 
+	secure_call InitialiseExceptions()
+
+	mov qword[ 0xffff340 ], 0
 	;Is there an ACPI Apic table to parse?
 	cmp qword[ apic_settings.acpi_apic_table_addr ], 0
 	jz .CheckMultibootTable

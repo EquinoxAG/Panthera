@@ -4,17 +4,17 @@ INCLUDE "apic/apic.inc"
 %include "SD/system_desc.inc"
 
 asciiNonShift db NULL, ESC, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', BACKSPACE,\
-TAB, 'q', 'w',   'e', 'r', 't', 'y', 'u', 'i', 'o', 'p',   '[', ']', ENTER, 0,\
-'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'", '`', 0, '\\',\
-'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0, 0, 0, ' ', 0,\
+TAB, 'q', 'w',   'e', 'r', 't', 'z', 'u', 'i', 'o', 'p',   '[', ']', ENTER, 0,\
+'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'", '`', 0, '\',\
+'y', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0, 0, 0, ' ', 0,\
 KF1, KF2, KF3, KF4, KF5, KF6, KF7, KF8, KF9, KF10, 0, 0,\
 KHOME, KUP, KPGUP,'-', KLEFT, '5', KRIGHT, '+', KEND, KDOWN, KPGDN, KINS, KDEL, 0, 0, 0, KF11, KF12
 
 
-asciiShift db NULL, ESC, '!', '"', '§', '$', '%', '&', '/', '(', ')', '=', '?', '`', BACKSPACE,\
-TAB, 'Q', 'W',   'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P',   '{', '}', ENTER, 0,\
+asciiShift db NULL, ESC, '!', '"', '3', '$', '%', '&', '/', '(', ')', '=', '?', '`', BACKSPACE,\
+TAB, 'Q', 'W',   'E', 'R', 'T', 'Z', 'U', 'I', 'O', 'P',   '{', '}', ENTER, 0,\
 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', '~', 0, '|',\
-'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', 0, 0, 0, ' ', 0,\
+'Y', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', 0, 0, 0, ' ', 0,\
 KF1,   KF2, KF3, KF4, KF5, KF6, KF7, KF8, KF9, KF10, 0, 0,\
 KHOME, KUP, KPGUP, '-', KLEFT, '5',   KRIGHT, '+', KEND, KDOWN, KPGDN, KINS, KDEL, 0, 0, 0, KF11, KF12
 
@@ -63,6 +63,8 @@ KeyboardTip:
 		add rbx, qword[ CurrentScanCode ]
 		mov al, byte[ rbx ]
 
+		cmp al, 'R'
+		jz ResetCPU
 		secure_call DrawCharacter( rax )
 	.end:	
 	
@@ -80,6 +82,14 @@ KeyboardTip:
 		jmp .end
 
 
+ResetCPU:
+	in al, 0x64
+	test al, 2
+	jnz ResetCPU
+
+	mov al, 0xFE
+	out 0x64, al
+	jmp $
 
 
 CurrentScanCode dq asciiNonShift
