@@ -1,5 +1,7 @@
 %include"memory/virtual_memory.inc"
 %include "heap/heap.inc"
+%include "cpu/cpu.inc"
+%include "vga/vga_driver.inc"
 
 %define IA32_PAT_MSR 0x277
 
@@ -36,19 +38,9 @@ DeclareFunction InitialiseVirtualMemoryManager( bootup_pml4 )
 					; Entry 6 : Cache type Write protected
 					; Entry 7 : Cache type Write Combined
 
-	mov eax, 0x80000001	;Check if the Not executable bit is valid
-	cpuid
-	test edx, (1<<20)	;Is nxe-bit supported?
-	jz .no_nxe
-
-	mov ecx, 0xC0000080	;Hardware enable the nxe bit
-	rdmsr
-	or eax, (1<<11)
-	wrmsr
-		
-	xor eax, eax					;Create bitmask which with all bits set to ensure not resetting the nxe-bit
-	not rax
-	mov qword[ vm_driver.efer_nxe_bit ], rax	;The value in this field will be ored with the page table entry, if nxe is not supported nothing will change cause x or 0 = x
+	mov rax, CPUInfoSignature
+	cmp qword[ gs:CPUInfo.signature ], rax
+	jnz fatal_no_pat
 
 	.no_nxe:	
 EndFunction
@@ -57,8 +49,14 @@ DeclareFunction MapVirtToPhys( virt_addr, phys_addr, size, flags )
 	ReserveStackSpace PML4_Base, qword
 	ReserveStackSpace PDPT_Base, qword
 	ReserveStackSpace PDT_Base, qword
+	ReserveStackSpace RBXBackup, qword
+	ReserveStackSpace R14Backup, qword
+	ReserveStackSpace R15Backup, qword
 	UpdateStackPtr
 
+	mov_ts qword[ RBXBackup ], rbx
+	mov_ts qword[ R14Backup ], r14
+	mov_ts qword[ R15Backup ], r15
 	mov r8, Arg_virt_addr
 	mov r9, Arg_virt_addr
 	shr r8, 9
@@ -76,7 +74,7 @@ DeclareFunction MapVirtToPhys( virt_addr, phys_addr, size, flags )
 	mov r14, Arg_phys_addr
 	and r11d, 0xFF8
 	mov r15, Arg_size
-	mov rdx, qword[ vm_driver.efer_nxe_bit ]
+	mov rdx, qword[ gs:CPUInfo.nxe_bit_mask ]
 
 	;Resume from the above operations:
 	;	r8 = Offset in the 4KB Page Tables
@@ -152,6 +150,9 @@ DeclareFunction MapVirtToPhys( virt_addr, phys_addr, size, flags )
 			mov eax, 0x1000
 
 		.MapNextPage:
+			push r12
+			and r12d, ~PAGE_FORCE_OVERWRITE
+
 			mov rsi, r14			;Get the right address into rsi
 		
 			;rdi = addr of the entry, rsi = phys addr, r12 = flags of the page, rax = page size
@@ -164,23 +165,35 @@ DeclareFunction MapVirtToPhys( virt_addr, phys_addr, size, flags )
 			xor rax, rax
 			and rsi, rdx				;And the current flags with the nxe-bit mask; NXE-Bitmask will flush the NXE-Bit if it is not supported by the hardware
 
+			pop r12
 			test si, (4<<3)				;Is the 3rd PAT Bit set?
 			jz .write_page				;No write the page to memory
 
 			xor si, cx				;Else flush the 3rd PAT-Bit and adjust it to the right position depending, on 2MB or 4KB page
 
-		.write_page:
-			lock cmpxchg qword[ rdi ], rsi		;Atomic write to the page table
-			mov rax, rbx				;Restore rax won't flush the flags
-			jnz Enter_CreateEnter_Dir.already_in_use
-	
 
+		.write_page:
+			lock cmpxchg qword[ rdi ], rsi		;Atomic write to the page table	
+			jz .continue
+
+			test r12, PAGE_FORCE_OVERWRITE
+			jz Enter_CreateEnter_Dir.already_in_use
 			
+			invlpg [r13]
+	
+		.force_write:
+			lock cmpxchg qword[ rdi ], rsi
+			jnz .force_write
+
+
+		.continue:
+			mov rax, rbx				;Restore the page size
 			and r12w, ~PAGE_SIZE_FLAG		;Reset the page size bit, if the next page is 2MB again the function will set the bit again, but default is 4KB
 
 			add rdi, 8				;Load address of the next entry
 			add r14, rax				;Increase physical address by pagesize
-		
+			add r13, rax
+
 			sub r15, rax				;Decrease size to map by pagesize
 			jbe .done				;If everthing is mapped, jump to done
 
@@ -222,7 +235,9 @@ DeclareFunction MapVirtToPhys( virt_addr, phys_addr, size, flags )
 
 	.done:
 		xor eax, eax			;Everything wents well, so reset eax
-
+		mov_ts rbx, qword[ RBXBackup ]
+		mov_ts r14, qword[ R14Backup ]
+		mov_ts r15, qword[ R15Backup ]
 EndFunction
 
 
@@ -252,7 +267,12 @@ EndFunction
 		jmp .end
 
 		.already_in_use:
-			mov eax, 0xFFCC
+			test r12, PAGE_FORCE_OVERWRITE
+			invlpg [r13]
+			jnz .create_new_dir
+
+			secure_call DrawString("Try overwrite dir")
+			mov eax, 1
 			jmp $
 
 		.create_new_dir:
@@ -304,7 +324,6 @@ fatal_no_pat:
 	jmp $
 
 vm_driver:
-	.efer_nxe_bit dq 0x7FFFFFFFFFFFFFFF	
 	.4kb_mask dw (1<<7)|(4<<3)
 	.2mb_mask dw (1<<12)|(4<<3)
 

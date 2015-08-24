@@ -6,6 +6,8 @@ INCLUDE "string/string.inc"
 
 ;Initalises the Heap with the specified size
 DeclareFunction InitialiseHeap( address, size )
+	push rdi
+	push rsi
 	mov dword[ HeapSettings.PhysicalAddr ], edi
 	mov ebx, esi
 	mov eax, edi

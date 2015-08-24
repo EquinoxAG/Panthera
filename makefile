@@ -22,9 +22,13 @@ kernel/exceptions/exception.asm:
 	nasm -f elf64 -o ./bin/exception.elf ./kernel/exceptions/exception.asm -i ./kernel/include/ -i ./kernel/include/Morgenroete/
 kernel/cpu/cpu.asm:
 	nasm -f elf64 -o ./bin/cpu.elf ./kernel/cpu/cpu.asm -i ./kernel/include/ -i ./kernel/include/Morgenroete/
+kernel/acpi/acpi.asm:
+	nasm -f elf64 -o ./bin/acpi.elf ./kernel/acpi/acpi.asm -i ./kernel/include/ -i ./kernel/include/Morgenroete/
+kernel/apic/apic.asm:
+	nasm -f elf64 -o ./bin/apic.elf ./kernel/apic/apic.asm -i ./kernel/include/ -i ./kernel/include/Morgenroete/
 
-link_all: boot/prekernel.asm kernel/kernel.asm boot/mbr.asm kernel/memory/vmemory.asm kernel/heap/heap.asm kernel/memory/pmemory.asm kernel/vga/vga_driver.asm kernel/string/string.asm kernel/SystemDescriptors/system_desc.asm kernel/exceptions/exception.asm kernel/cpu/cpu.asm
-	ld -z max-page-size=0x1000 -nostdlib -m elf_x86_64 -T ./kernel/link.ld -o ./bin/kernel.bin ./bin/prekernel.elf ./bin/kernel.elf ./bin/virtual_memory.elf ./bin/heap.elf ./bin/physical_memory.elf ./bin/vga_driver.elf ./bin/string.elf ./bin/system_desc.elf ./bin/exception.elf ./bin/cpu.elf
+link_all: boot/prekernel.asm kernel/apic/apic.asm kernel/kernel.asm boot/mbr.asm kernel/memory/vmemory.asm kernel/heap/heap.asm kernel/memory/pmemory.asm kernel/vga/vga_driver.asm kernel/string/string.asm kernel/SystemDescriptors/system_desc.asm kernel/exceptions/exception.asm kernel/cpu/cpu.asm kernel/acpi/acpi.asm
+	ld -z max-page-size=0x1000 -nostdlib -m elf_x86_64 -T ./kernel/link.ld -o ./bin/kernel.bin ./bin/prekernel.elf ./bin/kernel.elf ./bin/virtual_memory.elf ./bin/heap.elf ./bin/physical_memory.elf ./bin/vga_driver.elf ./bin/string.elf ./bin/system_desc.elf ./bin/exception.elf ./bin/cpu.elf ./bin/acpi.elf ./bin/apic.elf
 	cat ./bin/kernel.bin >>./bin/bootloader.bin
 	./appender ./bin/bootloader.bin ./bin/bootloader.bin
 
@@ -60,3 +64,5 @@ clean:
 	rm ./bin/system_desc.elf
 	rm ./bin/exception.elf
 	rm ./bin/cpu.elf
+	rm ./bin/acpi.elf
+	rm ./bin/apic.elf

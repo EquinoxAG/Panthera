@@ -6,6 +6,9 @@
 %include "string/string.inc"
 %include "SD/system_desc.inc"
 %include "exceptions/exception.inc"
+%include "cpu/cpu.inc"
+%include "acpi/acpi.inc"
+%include "apic/apic.inc"
 
 ;The main function takes one argument
 global kernelMain
@@ -24,15 +27,17 @@ kernelMain:
 	;Must be done before loading the exceptions or the apic
 	secure_call InitialiseSD()
 	
-	;Now that the IDT is set up load the exceptions, will catch general exception faults, page faults, etc.
-	secure_call InitialiseExceptions()
-
+	;Initialise the CPU detect features etc.
+	secure_call InitialiseCPU()
 
 	;Initialise the virtual memory manager after the exceptions
 	secure_call InitialiseVirtualMemoryManager( cr3 )
 
 
-	mov dword[ 0xaffffff ], 0
+	secure_call InitialiseACPI()
+
+	secure_call InitialiseAPIC()
+
 	jmp $
 
 ZeroIdt:
