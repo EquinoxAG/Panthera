@@ -4,29 +4,38 @@
 %include "memory/virtual_memory.inc"
 %include "vga/vga_driver.inc"
 %include "string/string.inc"
+%include "SD/system_desc.inc"
+%include "exceptions/exception.inc"
 
 ;The main function takes one argument
 global kernelMain
 kernelMain:
 	CreateStack kernelSt
+	lidt [ZeroIdt]			;Load a zero idt until everything else is set up
+
 	mov qword[MbrStrucAddr], rdi
-	secure_call InitialiseHeap( BOOTUP_HEAP_ADDR, (BOOTUP_ID_MAP_SIZE-BOOTUP_HEAP_ADDR) )	;Initialise the bootup stack with the whole memory which was mapped
 
-	secure_call InitialiseVirtualMemoryManager( cr3 )	;Initialise the virtual memory with the current cr3
-
-	secure_call MapVirtToPhys( 0xFEE00000, 0xFEE00000, 0x1000, PAGE_CACHE_TYPE_UC|PAGE_READ_WRITE)
 	secure_call ClearScreen()
 
-	.loop:
-		mov ebx, 0
-	.DrawDelay:
-		add ebx, 1
-		cmp ebx, 0xFFFFFFF
-		jnz .DrawDelay
-		secure_call PrintMemoryMap()
-		jmp .loop
+	;IMPORTANT InitialiseHeap must be executed before any other Initialisation function as the other intialisation function use malloc!!!!!!!!!!!!!!
+	secure_call InitialiseHeap( BOOTUP_HEAP_ADDR, (BOOTUP_ID_MAP_SIZE-BOOTUP_HEAP_ADDR) )	;Initialise the bootup stack with the whole memory which was mapped
+
+	;Next Initialise the system descriptors, means, initialise the gdt and the idt
+	;Must be done before loading the exceptions or the apic
+	secure_call InitialiseSD()
+	
+	;Now that the IDT is set up load the exceptions, will catch general exception faults, page faults, etc.
+	secure_call InitialiseExceptions()
+
+
+
+
+	mov dword[ 0xaffffff ], 0
 	jmp $
 
+ZeroIdt:
+	.idt_limit dw 0
+	.idt_base dq 0
 section .bss
 MbrStrucAddr resq 0
 
