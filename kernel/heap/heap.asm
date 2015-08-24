@@ -1,5 +1,7 @@
 %include "Morgenroetev1.inc"
 INCLUDE "heap/heap.inc"
+INCLUDE "vga/vga_driver.inc"
+INCLUDE "string/string.inc"
 
 
 ;Initalises the Heap with the specified size
@@ -253,47 +255,47 @@ EndFunction
 ;		secure_call DrawString( rax )
 ;EndFunction
 
-;DeclareFunction PrintMemoryMap()
-;	mov ebx, dword[ HeapSettings.PhysicalAddr ]
-;
-;	ReserveStackSpace HeaderStr, KString1024
-;	UpdateStackPtr
-;
-;	secure_call HeaderStr.append_str({CONSOLE_CHANGEFG(COLOR_WHITE),0x0A,"Printing Heap complete memory map",0x0A})
-;
-;	.StartTraverse:
-;		secure_call HeaderStr.append_str({"Base addr: ", CONSOLE_CHANGEFG(COLOR_BROWN)})
-;		mov eax, ebx
-;		add eax, HeapInfoBlock_size
-;		secure_call HeaderStr.append_inth( rax )
-;		secure_call HeaderStr.append_str({CONSOLE_CHANGEFG(COLOR_WHITE)," | Length: ", CONSOLE_CHANGEFG(COLOR_BROWN)})
-;		mov eax, dword[ ebx + HeapInfoBlock.size ]
-;		secure_call HeaderStr.append_inth( rax )
-;
-;		secure_call HeaderStr.append_str({CONSOLE_CHANGEFG(COLOR_WHITE), " | Usage: ", CONSOLE_CHANGEFG(COLOR_BROWN)})
-;
-;		mov eax, dword[ ebx + HeapInfoBlock.alloc_reason ]
-;
-;		cmp eax, BLOCK_USERDEFINED
-;		ja .userdef
-;
-;		secure_call HeaderStr.append_str( "Free memory" )
-;		jmp .next
-;
-;		.userdef:
-;			secure_call HeaderStr.append_str( rax )
-;
-;		.next:
-;			secure_call HeaderStr.append_str({CONSOLE_CHANGEFG(COLOR_WHITE),0x0A})
-;			add ebx, dword[ ebx + HeapInfoBlock.size ]
-;			add ebx, HeapInfoBlock_size
-;			cmp ebx, dword[ HeapSettings.PhysicalAddrEnd ]
-;			jnz .StartTraverse
-;
-;		secure_call HeaderStr.c_str()
-;		secure_call DrawString( rax )
-;EndFunction
-;
+DeclareFunction PrintMemoryMap()
+	mov ebx, dword[ HeapSettings.PhysicalAddr ]
+
+	ReserveStackSpace HeaderStr, KString1024
+	UpdateStackPtr
+
+	secure_call HeaderStr.append_str({CONSOLE_CHANGEFG(COLOR_WHITE),0x0A,"Printing Heap complete memory map",0x0A})
+
+	.StartTraverse:
+		secure_call HeaderStr.append_str({"Base addr: ", CONSOLE_CHANGEFG(COLOR_BROWN)})
+		mov eax, ebx
+		add eax, HeapInfoBlock_size
+		secure_call HeaderStr.append_inth( rax )
+		secure_call HeaderStr.append_str({CONSOLE_CHANGEFG(COLOR_WHITE)," | Length: ", CONSOLE_CHANGEFG(COLOR_BROWN)})
+		mov eax, dword[ ebx + HeapInfoBlock.size ]
+		secure_call HeaderStr.append_inth( rax )
+
+		secure_call HeaderStr.append_str({CONSOLE_CHANGEFG(COLOR_WHITE), " | Usage: ", CONSOLE_CHANGEFG(COLOR_BROWN)})
+
+		mov eax, dword[ ebx + HeapInfoBlock.alloc_reason ]
+
+		cmp eax, BLOCK_USERDEFINED
+		ja .userdef
+
+		secure_call HeaderStr.append_str( "Free memory" )
+		jmp .next
+
+		.userdef:
+			secure_call HeaderStr.append_str( rax )
+
+		.next:
+			secure_call HeaderStr.append_str({CONSOLE_CHANGEFG(COLOR_WHITE),0x0A})
+			add ebx, dword[ ebx + HeapInfoBlock.size ]
+			add ebx, HeapInfoBlock_size
+			cmp ebx, dword[ HeapSettings.PhysicalAddrEnd ]
+			jnz .StartTraverse
+
+		secure_call HeaderStr.c_str()
+		secure_call DrawString( rax )
+EndFunction
+
 
 ;esi = addr, ebx = value to write
 LockThing:

@@ -63,7 +63,7 @@ DrawString:
 		jz .changeFG
 
 		cmp al, CONSOLE_CHANGE_BACKGROUND_CHAR
-		jz .chageBG
+		jz .changeBG
 
 		cmp al, CONSOLE_LINEBREAK
 		jz .linebreak
@@ -103,6 +103,7 @@ DrawString:
 		jmp .draw		
 		
 	.done:
+		mov dword[ vga_driver.curr_write_addr ], edi
 		ret
 	
 

@@ -12,9 +12,13 @@ kernel/memory/vmemory.asm:
 	nasm -f elf64 -o ./bin/virtual_memory.elf ./kernel/memory/vmemory.asm -i ./kernel/include/ -i ./kernel/include/Morgenroete/
 kernel/heap/heap.asm:
 	nasm -f elf64 -o ./bin/heap.elf ./kernel/heap/heap.asm -i ./kernel/include/ -i ./kernel/include/Morgenroete/
+kernel/vga/vga_driver.asm:	
+	nasm -f elf64 -o ./bin/vga_driver.elf ./kernel/vga/vga_driver.asm -i ./kernel/include/ -i ./kernel/include/Morgenroete/
+kernel/string/string.asm:	
+	nasm -f elf64 -o ./bin/string.elf ./kernel/string/string.asm -i ./kernel/include/ -i ./kernel/include/Morgenroete/
 
-link_all: boot/prekernel.asm kernel/kernel.asm boot/mbr.asm kernel/memory/vmemory.asm kernel/heap/heap.asm kernel/memory/pmemory.asm
-	ld -z max-page-size=0x1000 -nostdlib -m elf_x86_64 -T ./kernel/link.ld -o ./bin/kernel.bin ./bin/prekernel.elf ./bin/kernel.elf ./bin/virtual_memory.elf ./bin/heap.elf ./bin/physical_memory.elf
+link_all: boot/prekernel.asm kernel/kernel.asm boot/mbr.asm kernel/memory/vmemory.asm kernel/heap/heap.asm kernel/memory/pmemory.asm kernel/vga/vga_driver.asm kernel/string/string.asm
+	ld -z max-page-size=0x1000 -nostdlib -m elf_x86_64 -T ./kernel/link.ld -o ./bin/kernel.bin ./bin/prekernel.elf ./bin/kernel.elf ./bin/virtual_memory.elf ./bin/heap.elf ./bin/physical_memory.elf ./bin/vga_driver.elf ./bin/string.elf
 	cat ./bin/kernel.bin >>./bin/bootloader.bin
 	./appender ./bin/bootloader.bin ./bin/bootloader.bin
 
@@ -36,7 +40,7 @@ update:
 	cd ..
 	cd ..
 
-.PHONY: boot/prekernel.asm boot/netboot.asm kernel/memory/vmemory.asm kernel/keyboard/keyboard.asm kernel/kernel.asm boot/mbr.asm kernel/graphics/vga_driver.asm kernel/memory/pmemory.asm kernel/memory/vmemory.asm kernel/string/string.asm kernel/heap/heap.asm kernel/ata/ata_driver.asm kernel/acpi/acpi.asm kernel/apic/apic.asm kernel/exception/exception.asm kernel/hpet/hpet.asm link_all
+.PHONY: boot/prekernel.asm boot/netboot.asm kernel/memory/vmemory.asm kernel/keyboard/keyboard.asm kernel/kernel.asm boot/mbr.asm kernel/vga/vga_driver.asm kernel/memory/pmemory.asm kernel/memory/vmemory.asm kernel/string/string.asm kernel/heap/heap.asm kernel/ata/ata_driver.asm kernel/acpi/acpi.asm kernel/apic/apic.asm kernel/exception/exception.asm kernel/hpet/hpet.asm link_all
 
 
 clean:
@@ -45,3 +49,5 @@ clean:
 	rm ./bin/virtual_memory.elf
 	rm ./bin/heap.elf
 	rm ./bin/physical_memory.elf
+	rm ./bin/vga_driver.elf
+	rm ./bin/string.elf

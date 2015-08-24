@@ -2,20 +2,22 @@
 %include "boot/multiboot.inc"
 %include "heap/heap.inc"
 %include "memory/virtual_memory.inc"
-
+%include "vga/vga_driver.inc"
+%include "string/string.inc"
 
 ;The main function takes one argument
 global kernelMain
 kernelMain:
 	CreateStack kernelSt
 	mov qword[MbrStrucAddr], rdi
-
 	secure_call InitialiseHeap( BOOTUP_HEAP_ADDR, (BOOTUP_ID_MAP_SIZE-BOOTUP_HEAP_ADDR) )	;Initialise the bootup stack with the whole memory which was mapped
 
 	secure_call InitialiseVirtualMemoryManager( cr3 )	;Initialise the virtual memory with the current cr3
 
-
-	mov word[ 0xb8000 ], 0x0430
+	secure_call MapVirtToPhys( 0xFEE00000, 0xFEE00000, 0x1000, PAGE_CACHE_TYPE_UC|PAGE_READ_WRITE)
+	secure_call ClearScreen()
+	
+	secure_call PrintMemoryMap()
 	jmp $
 
 section .bss
