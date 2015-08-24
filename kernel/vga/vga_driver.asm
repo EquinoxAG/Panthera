@@ -8,6 +8,7 @@ GraphicDriverInterface:
 	.set_background_attr dq SetBackgroundAttribute
 	.draw_character dq DrawCharacter
 	.draw_string dq DrawString
+	.draw_string_cnt dq 0
 
 ClearScreen:
 	mov edi, dword[ vga_driver.lfb_address ]
@@ -45,6 +46,8 @@ DrawCharacter:
 	ret
 
 
+
+
 ;edi = string address
 DrawString:
 	mov rsi, rdi
@@ -53,6 +56,9 @@ DrawString:
 	or ah, byte[ vga_driver.background_attr ]
 
 	.draw:
+		cmp edi, dword[ vga_driver.lfb_end ]
+		jns .scroll_down
+
 		mov al, byte[ rsi ]
 		add esi, 1
 
@@ -100,7 +106,32 @@ DrawString:
 		sub edi, edx
 
 		pop rax
-		jmp .draw		
+		jmp .draw	
+	.scroll_down:
+		push rsi
+		push rax
+
+		mov edi, dword[ vga_driver.lfb_address ]
+		mov ecx, dword[ vga_driver.phys_scr_size ]
+		mov esi, edi
+		sub ecx, 3*160
+		add esi, 3*160
+
+		shr ecx, 1
+		rep movsw
+
+		push rdi
+		xor ax, ax
+		mov ecx, 3*80
+		rep stosw
+		
+		
+		pop rdi
+		pop rax
+
+		pop rsi
+		jmp .draw
+
 		
 	.done:
 		mov dword[ vga_driver.curr_write_addr ], edi
@@ -111,6 +142,7 @@ vga_driver:
 	.foreground_attr db 0xF
 	.background_attr db 0
 	.lfb_address dd 0xb8000
+	.lfb_end dd (0xb8000+(80*25*2))
 	.curr_write_addr dd 0xb8000
 	.phys_scr_size dd (80*25*2)
 	.bytes_per_scanline dd 160

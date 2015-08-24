@@ -16,8 +16,15 @@ kernelMain:
 
 	secure_call MapVirtToPhys( 0xFEE00000, 0xFEE00000, 0x1000, PAGE_CACHE_TYPE_UC|PAGE_READ_WRITE)
 	secure_call ClearScreen()
-	
-	secure_call PrintMemoryMap()
+
+	.loop:
+		mov ebx, 0
+	.DrawDelay:
+		add ebx, 1
+		cmp ebx, 0xFFFFFFF
+		jnz .DrawDelay
+		secure_call PrintMemoryMap()
+		jmp .loop
 	jmp $
 
 section .bss

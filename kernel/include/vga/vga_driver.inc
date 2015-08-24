@@ -20,7 +20,6 @@ interface_open IGraphicDriver
 	add set_background_attr, qword
 	add draw_character, qword
 	add draw_string, qword
-
 interface_close
 
 DefineFunction LoadVGADriver, 0
