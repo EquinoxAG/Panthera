@@ -131,7 +131,7 @@ main:
 
 
 	cli
-	lgdt[gdt_limit]
+	lgdt[gdt_limit_mbr]
 
 	in al, 0x92
 	cmp al, 0xFF
@@ -207,8 +207,8 @@ ProtectedMode:
 		
 		jmp $
 
-gdt_limit dw 24
-gdt_end dd gdt
+gdt_limit_mbr dw 24
+gdt_end_mbr dd gdt
 gdt:
 	dd 0
 	dd 0

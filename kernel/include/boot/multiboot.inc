@@ -52,3 +52,5 @@ interface_close
 %define MemMapAddr 0x600 ;Relocates the MemMap to address 0x600 or if the bootloader from PerfOS is used create it at that address
 %define BOOTUP_PML4_ADDR 0x200000 
 %define BOOTUP_ID_MAP_SIZE 0x2000000
+%define gdt_limit 0x2980
+%define gdt_base 0x2982

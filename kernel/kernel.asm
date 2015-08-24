@@ -33,11 +33,13 @@ kernelMain:
 	;Initialise the virtual memory manager after the exceptions
 	secure_call InitialiseVirtualMemoryManager( cr3 )
 
-
+	;Find and parse the acpi tables
 	secure_call InitialiseACPI()
 
+	;Parse the ACPI apic table
 	secure_call InitialiseAPIC()
 
+	secure_call PrintMemoryMap()
 	jmp $
 
 ZeroIdt:

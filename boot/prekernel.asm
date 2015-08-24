@@ -10,8 +10,6 @@
 	dd CHECKSUM
 	%define STACK_BASE_ADDR  0x2FFFF0
 	%define GDT_BASE 0x900
-	%define gdt_limit 0x980
-	%define gdt_base 0x982
 	extern kernel_start
 	extern kernel_end
 

@@ -7,6 +7,7 @@ DefineFunction SupplyACPIApicTable, 1
 DefineFunction InitialiseAPIC, 0
 DefineFunction sendEOI,0
 
+
 %define PIC_MASTER_CMD 0x20
 %define PIC_MASTER_DATA 0x21
 %define PIC_SLAVE_CMD 0xA0

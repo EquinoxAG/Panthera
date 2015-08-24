@@ -68,7 +68,7 @@ jnz .again_mmap
 
 
 cli
-lgdt[gdt_limit]
+lgdt[gdt_limit_mbr]
 
 in al, 0x92
 cmp al, 0xFF
@@ -174,8 +174,8 @@ DAP_PACKET:
 	.start_lba dd 0
 	.end_lba dd 0
 
-gdt_limit dw 24
-gdt_end dd gdt
+gdt_limit_mbr dw 24
+gdt_end_mbr dd gdt
 gdt:
 	dd 0
 	dd 0

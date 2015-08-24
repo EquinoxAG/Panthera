@@ -6,7 +6,8 @@ INCLUDE "memory/virtual_memory.inc"
 INCLUDE "string/string.inc"
 %include "cpu/cpu.inc"
 %include "SD/system_desc.inc"
-
+%include "boot/multiboot.inc"
+%include "keyboard/keyboard.inc"
 
 DeclareFunction SupplyACPIApicTable( addr )
 	mov qword[ apic_settings.acpi_apic_table_addr], Arg_addr
@@ -123,8 +124,18 @@ DeclareFunction InitialiseAPIC()
 
 	mov rbx, rax
 	secure_call MapVirtToPhys( rax, rax, 0x1000, PAGE_READ_WRITE|PAGE_CACHE_TYPE_UC|PAGE_FORCE_OVERWRITE )
-	mov rax, rbx
 
+
+	mov esi, dword[ gs:CPUInfo.apic_addr ]
+	mov eax, 0xC4500
+	mov dword[ esi + APICRegisters.interrupt_command ], eax	;INIT IP to all APs
+	
+	mov esi, start
+	mov edi, 0x2000
+	mov ecx, (BootupEnd-start)
+	rep movsb
+
+	mov rax, rbx
 	mov dword[ eax + APICRegisters.spurious_interrupt_vector ], 0xF0|APIC_LOCAL_SPURIOUS_ENABLE	;Enable the APIC spurious vector is 0xF0
 	
 	mov dword[ eax + APICRegisters.divide_config ], 0xB
@@ -153,20 +164,19 @@ DeclareFunction InitialiseAPIC()
 		jz .found_io_apic
 
 		cmp byte[ rbx + MADTEntryHeader.type ], MADT_IntrSrcOverrideEntryType
-		jz .found_intr_redirect
-		
+		jz .found_intr_redirect		
 	.selectNext:
 		movzx eax, byte[ rbx + MADTEntryHeader.length ]
 		add ebx, eax
 		sub r15d, eax
 		ja .StartTraverse
 
-		;IRQ 1 connected to interrupt 40
-		secure_call MapIOAPICEntryToIRQ( 1, 40 )
-		secure_call SetIDTGate( 40, .KeyboardTip, 3 )
+		mov esi, dword[ gs:CPUInfo.apic_addr ]
+		mov eax, 0xC4602
+		mov dword[ esi + APICRegisters.interrupt_command ], eax
+
+		secure_call KeyboardInstallIRQ()
 		
-		secure_call DrawString("Survived till end")
-		jmp $
 		sti
 		jmp .function_end
 	
@@ -225,27 +235,7 @@ DeclareFunction InitialiseAPIC()
 
 			mov eax, dword[ eax + IOAPICDesc.base ]
 	
-			jmp .selectNext
-		
-		
-	align 8
-	.KeyboardTip:
-		push rax
-		push rdx
-	
-		secure_call DrawString("Key pressed")
-
-		in al, 0x60
-		in al, 0x61
-		or al, 0x80
-		out 0x61, al
-		and al, 0x7F
-		out 0x61, al
-
-		secure_call sendEOI()
-		pop rdx
-		pop rax
-		iretq
+			jmp .selectNext	
 
 	
 	.CheckMultibootTable:
@@ -264,14 +254,78 @@ DeclareFunction InitialiseAPIC()
 
 EndFunction
 
+[BITS 16]
+start:
+	xor ax, ax
+	mov ds, ax
+	mov es, ax
+	mov ss, ax
+
+	mov sp, 0x9000
+
+	lgdt [gdt_limit]
+
+	mov eax, cr0
+	or eax, 1
+	mov cr0, eax
+
+	jmp dword 0x08:pm
+[BITS 32]
+pm:
+	mov ax, 0x10
+	mov ds, ax
+	mov es, ax
+	mov gs, eax
+	mov fs, ax
+	mov ss, ax
+
+	mov eax, cr4
+	or eax, 0x20
+	mov cr4, eax
+
+	mov eax, BOOTUP_PML4_ADDR
+	mov cr3, eax
+	
+	mov ecx, 0xC0000080
+	rdmsr
+	or eax, 0x100	;Set Long Mode Bit
+	wrmsr
+
+	mov eax, cr0	
+	or eax, 0x80000000	;Activate Paging
+	mov cr0, eax
+
+	jmp 0x18:LongMode	; Enter long mode
+
+[BITS 64]
+	LongMode:
+		mov ax, 0x20
+		mov ds, ax
+		mov es, ax
+		mov gs, ax
+		mov fs, ax
+		mov ss, ax
+
+		mov al, 1
+		.Mutex:
+			xchg byte[ BootupEnd ], al
+			test al, al
+			jnz .Mutex
+
+		add dword[ apic_settings.processor_count ], 1
+		
+		mov byte[ BootupEnd ], 0
+		jmp $
+
+BootupEnd:
+	db 0
+
 
 align 8
 apic_settings:
 	.acpi_apic_table_addr dq 0
 	.intel_mbr_table_addr dq 0
 	.processor_count dq 0
-	.idt_length dw 256*16
-	.idt_base dq 0
 	.io_apic_ptr dq 0
 
 ImportAllMgrFunctions
